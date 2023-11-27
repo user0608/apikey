@@ -32,6 +32,16 @@ func existKey(key string) bool {
 	return keys[key]
 }
 
+func getKeys() []string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	var values = make([]string, 0, len(keys))
+	for k := range keys {
+		values = append(values, k)
+	}
+	return values
+}
+
 func load() error {
 	file, err := os.OpenFile(".apikeys", os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
@@ -42,7 +52,11 @@ func load() error {
 	scanner := bufio.NewScanner(file)
 	var lines []string
 	for scanner.Scan() {
-		lines = append(lines, strings.TrimSpace(scanner.Text()))
+		var value = strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(value, "#") {
+			continue
+		}
+		lines = append(lines, value)
 	}
 	if err := scanner.Err(); err != nil {
 		log.Println("Error al leer el archivo .apikeys:", err)
@@ -75,6 +89,10 @@ func main() {
 			return c.String(http.StatusInternalServerError, err.Error())
 		}
 		return c.String(http.StatusOK, "success!!")
+	})
+	e.GET("/apikeys", func(c echo.Context) error {
+		var keys = getKeys()
+		return c.String(http.StatusOK, strings.Join(keys, "\n"))
 	})
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
