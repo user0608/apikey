@@ -12,10 +12,11 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 var mutex sync.RWMutex
-var keys map[string]bool
+var keys = make(map[string]bool)
 
 func setKeys(values []string) {
 	mutex.Lock()
@@ -72,6 +73,9 @@ func main() {
 	}
 	e := echo.New()
 	e.HideBanner = true
+	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format: "time=${time_unix}, method=${method}, uri=${uri}, status=${status}, latency=${latency_human}\n",
+	}))
 	go func() {
 		if err := e.Start(":1323"); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("shutting down the server")
@@ -79,20 +83,23 @@ func main() {
 	}()
 	e.GET("/", func(c echo.Context) error {
 		var apiKey = c.Request().Header.Get("X-Original-Apikey")
-		if existKey(apiKey) {
+		if apiKey == "" {
+			apiKey = c.Request().Header.Get("apikey")
+		}
+		if existKey(strings.TrimSpace(apiKey)) {
 			return c.NoContent(http.StatusOK)
 		}
 		return c.NoContent(http.StatusUnauthorized)
 	})
 	e.GET("/refresh", func(c echo.Context) error {
 		if err := load(); err != nil {
-			return c.String(http.StatusInternalServerError, err.Error())
+			return c.String(http.StatusInternalServerError, err.Error()+"\n")
 		}
-		return c.String(http.StatusOK, "success!!")
+		return c.String(http.StatusOK, "success!!\n")
 	})
 	e.GET("/apikeys", func(c echo.Context) error {
 		var keys = getKeys()
-		return c.String(http.StatusOK, strings.Join(keys, "\n"))
+		return c.String(http.StatusOK, strings.Join(keys, "\n")+"\n")
 	})
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
