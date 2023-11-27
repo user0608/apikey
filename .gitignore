@@ -1,1 +1,4 @@
+.vscode
 .apikeys
+__debug_bin*
+build

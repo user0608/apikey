@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -54,6 +55,9 @@ func load() error {
 	var lines []string
 	for scanner.Scan() {
 		var value = strings.TrimSpace(scanner.Text())
+		if value == "" {
+			continue
+		}
 		if strings.HasPrefix(value, "#") {
 			continue
 		}
@@ -81,8 +85,8 @@ func main() {
 			e.Logger.Fatal("shutting down the server")
 		}
 	}()
-	e.GET("/", func(c echo.Context) error {
-		var apiKey = c.Request().Header.Get("X-Original-Apikey")
+	e.GET("/auth", func(c echo.Context) error {
+		var apiKey = c.Request().Header.Get("x-api-key")
 		if apiKey == "" {
 			apiKey = c.Request().Header.Get("apikey")
 		}
@@ -93,13 +97,13 @@ func main() {
 	})
 	e.GET("/refresh", func(c echo.Context) error {
 		if err := load(); err != nil {
-			return c.String(http.StatusInternalServerError, err.Error()+"\n")
+			return c.String(http.StatusInternalServerError, fmt.Sprintln(err.Error()))
 		}
-		return c.String(http.StatusOK, "success!!\n")
+		return c.String(http.StatusOK, fmt.Sprintln("success!!"))
 	})
 	e.GET("/apikeys", func(c echo.Context) error {
 		var keys = getKeys()
-		return c.String(http.StatusOK, strings.Join(keys, "\n")+"\n")
+		return c.String(http.StatusOK, fmt.Sprintln(strings.Join(keys, "\n")))
 	})
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
