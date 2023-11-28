@@ -58,7 +58,7 @@ func load() error {
 		if value == "" {
 			continue
 		}
-		if strings.HasPrefix(value, "#") {
+		if strings.HasPrefix(value, "#") || strings.HasPrefix(value, ";") {
 			continue
 		}
 		lines = append(lines, value)
@@ -86,8 +86,15 @@ func main() {
 		}
 	}()
 	e.GET("/auth", func(c echo.Context) error {
-		var apiKey = c.Request().Header.Get("x-api-key")
+		var apiKey = c.Request().Header.Get("X-Api-Key")
 		if apiKey == "" {
+			apiKey = c.Request().Header.Get("Apikey")
+		}
+		if apiKey == "" {
+			apiKey = c.Request().Header.Get("x-api-key")
+		}
+		if apiKey == "" {
+
 			apiKey = c.Request().Header.Get("apikey")
 		}
 		if existKey(strings.TrimSpace(apiKey)) {
